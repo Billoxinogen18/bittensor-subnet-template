@@ -63,34 +63,14 @@ with codecs.open(
     version_string = version_match.group(1)
 
 setup(
-    name="bittensor_subnet_template",  # TODO(developer): Change this value to your module subnet name.
-    version=version_string,
-    description="bittensor_subnet_template",  # TODO(developer): Change this value to your module subnet description.
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    url="https://github.com/opentensor/bittensor-subnet-template",  # TODO(developer): Change this url to your module subnet github url.
-    author="bittensor.com",  # TODO(developer): Change this value to your module subnet author name.
-    packages=find_packages(),
-    include_package_data=True,
-    author_email="",  # TODO(developer): Change this value to your module subnet author email.
-    license="MIT",
-    python_requires=">=3.8",
-    install_requires=requirements,
-    classifiers=[
-        "Development Status :: 3 - Alpha",
-        "Intended Audience :: Developers",
-        "Topic :: Software Development :: Build Tools",
-        # Pick your license as you wish
-        "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3 :: Only",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
-        "Topic :: Scientific/Engineering",
-        "Topic :: Scientific/Engineering :: Mathematics",
-        "Topic :: Scientific/Engineering :: Artificial Intelligence",
-        "Topic :: Software Development",
-        "Topic :: Software Development :: Libraries",
-        "Topic :: Software Development :: Libraries :: Python Modules",
+    name="zeus_hash_subnet",
+    version="0.1.0",
+    description="Bittensor subnet integrating Zeus ASIC hash work",
+    author="<your name>",
+    packages=find_packages(exclude=("tests", "docs")),
+    install_requires=[
+        "bittensor>=7.1.0",
+        "rich>=13.0",
     ],
+    python_requires=">=3.8",
 )

@@ -26,8 +26,8 @@ import bittensor as bt
 # import base validator class which takes care of most of the boilerplate
 from template.base.validator import BaseValidatorNeuron
 
-# Bittensor Validator Template:
-from template.validator import forward
+import os, random, time, struct, hashlib
+from template.protocol import HashWork
 
 
 class Validator(BaseValidatorNeuron):
@@ -48,16 +48,44 @@ class Validator(BaseValidatorNeuron):
         # TODO(developer): Anything specific to your use case you can do here
 
     async def forward(self):
+        """Simple proof-of-concept forward pass.
+
+        Generates a pseudo-random 80-byte header and target of diff 16,
+        dispatches to all miners, interprets responses, then returns a
+        dictionary mapping uid→score (1|0) which the base class converts to
+        on-chain weights.
         """
-        Validator forward pass. Consists of:
-        - Generating the query
-        - Querying the miners
-        - Getting the responses
-        - Rewarding the miners
-        - Updating the scores
-        """
-        # TODO(developer): Rewrite this function based on your protocol definition.
-        return await forward(self)
+        # 1. build challenge
+        header = os.urandom(76)  # 76 bytes without nonce
+        target_prefix = b"\x00\x00\x0f\xff" + b"\xff" * 28  # very low diff
+        target = target_prefix[::-1]  # little-endian
+
+        # craft synapse template once
+        work_template = HashWork(
+            header_hex=header.hex(),
+            target_hex=target.hex(),
+        )
+
+        # 2. query miners asynchronously via dendrite
+        responses = await self.dendrite.query(
+            neurons=self.metagraph.axons,
+            synapse=work_template,
+            deserialize=True,
+            timeout=8.0,
+        )
+
+        # 3. evaluate
+        scores = {}
+        for uid, resp in enumerate(responses):
+            try:
+                ok = bool(resp)
+            except Exception:
+                ok = False
+            scores[uid] = 1.0 if ok else 0.0
+
+        # 4. update moving average handled by BaseValidatorNeuron
+        self.update_scores(scores)
+        return scores
 
 
 # The main function parses the configuration and runs the validator.

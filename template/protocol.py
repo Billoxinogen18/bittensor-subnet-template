@@ -17,60 +17,44 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+from dataclasses import dataclass
 import typing
 import bittensor as bt
 
-# TODO(developer): Rewrite with your protocol definition.
 
-# This is the protocol for the dummy miner and validator.
-# It is a simple request-response protocol where the validator sends a request
-# to the miner, and the miner responds with a dummy response.
+@dataclass
+class HashWork(bt.Synapse):
+    """Synapse used by Zeus-hash subnet.
 
-# ---- miner ----
-# Example usage:
-#   def dummy( synapse: Dummy ) -> Dummy:
-#       synapse.dummy_output = synapse.dummy_input + 1
-#       return synapse
-#   axon = bt.axon().attach( dummy ).serve(netuid=...).start()
+    Validator sends a mining *challenge* consisting of an 80-byte block header
+    (pre-hash, little-endian hex) plus the target (32-byte little-endian hex).
+    Miner tries to find a nonce that makes scrypt(header_with_nonce) ≤ target.
 
-# ---- validator ---
-# Example usage:
-#   dendrite = bt.dendrite()
-#   dummy_output = dendrite.query( Dummy( dummy_input = 1 ) )
-#   assert dummy_output == 2
-
-
-class Dummy(bt.Synapse):
-    """
-    A simple dummy protocol representation which uses bt.Synapse as its base.
-    This protocol helps in handling dummy request and response communication between
-    the miner and the validator.
-
-    Attributes:
-    - dummy_input: An integer value representing the input request sent by the validator.
-    - dummy_output: An optional integer value which, when filled, represents the response from the miner.
+    Attributes
+    ----------
+    header_hex : str
+        Full 80-byte block header in hexadecimal **without** the nonce updated.
+    target_hex : str
+        32-byte target threshold in hexadecimal (little-endian).
+    nonce : typing.Optional[int]
+        32-bit nonce that solves the work (filled by miner).
+    success : typing.Optional[bool]
+        True if miner claims header+nonce meets the target, else False.
+    latency_ms : typing.Optional[float]
+        Round-trip latency measured by miner (optional, for telemetry).
     """
 
-    # Required request input, filled by sending dendrite caller.
-    dummy_input: int
+    header_hex: str
+    target_hex: str
 
-    # Optional request output, filled by receiving axon.
-    dummy_output: typing.Optional[int] = None
+    # Miner-side outputs
+    nonce: typing.Optional[int] = None
+    success: typing.Optional[bool] = None
+    latency_ms: typing.Optional[float] = None
 
-    def deserialize(self) -> int:
-        """
-        Deserialize the dummy output. This method retrieves the response from
-        the miner in the form of dummy_output, deserializes it and returns it
-        as the output of the dendrite.query() call.
+    def deserialize(self):
+        """When the dendrite receives a response, return simple bool of success."""
+        return bool(self.success)
 
-        Returns:
-        - int: The deserialized response, which in this case is the value of dummy_output.
-
-        Example:
-        Assuming a Dummy instance has a dummy_output value of 5:
-        >>> dummy_instance = Dummy(dummy_input=4)
-        >>> dummy_instance.dummy_output = 5
-        >>> dummy_instance.deserialize()
-        5
-        """
-        return self.dummy_output
+# Backwards-compat alias so other template code doesn’t break
+Work = HashWork

@@ -211,3 +211,86 @@ This repository is licensed under the MIT License.
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 ```
+
+# Zeus Hash Subnet
+
+Bittensor subnet that rewards ASIC hash-work produced by ZeusMiner Scrypt devices.
+
+---
+
+## Architecture
+
+```
+┌──────────────┐    HashWork     ┌──────────────┐
+│  Validators  │  <gRPC / BT>   │    Miners    │
+└──────┬───────┘                 └──────┬───────┘
+       │                                │
+       │ scores                         │ shares
+       ▼                                ▼
+  Yuma Consensus  <── on-chain ──►  Bittensor
+```
+
+* **Miner** = cgminer_zeus + thin Python wrapper.  Receives an 80-byte header & target, asks the local cgminer JSON API to solve, returns nonce & success flag.
+* **Validator** generates challenges, scores miners (1 = valid share, 0 = invalid / timeout), and submits weights each epoch.
+
+## Quick start (Linux)
+
+```bash
+# Clone
+git clone https://github.com/<you>/zeus_hash_subnet.git
+cd zeus_hash_subnet
+
+# Build docker image (includes cgminer)
+docker build -t zeus_hash_subnet .
+
+# Run miner container (pass USB)
+docker run --privileged -v /dev/bus/usb:/dev/bus/usb -e WALLET_NAME=default -e HOTKEY=default zeus_hash_subnet
+```
+
+### Local subtensor & validator
+
+```bash
+# Run subtensor testnet node
+curl -s https://raw.githubusercontent.com/opentensor/subtensor/master/scripts/localnet.sh | bash
+
+# Spin up validator
+python neurons/validator.py --netuid 17 --subtensor.network local \
+       --wallet.name default --wallet.hotkey validator
+```
+
+## Building cgminer manually
+
+If you prefer a bare-metal build (e.g. on a Pi attached to USB ASIC):
+
+```bash
+./build_cgminer.sh  # installs deps, compiles, installs to /usr/local/bin
+cgminer --scrypt --zeus -o stratum+tcp://litecoinpool.org:3333 -u user.worker -p x &
+```
+
+Ensure cgminer is started with `--api-listen` (default in Zeus fork) so the wrapper can reach port 4028.
+
+## Project layout
+
+```
+zeus_hash_subnet/
+ ├─ template/              # Bittensor base classes
+ │   └─ protocol.py        # HashWork synapse definition
+ ├─ neurons/
+ │   ├─ miner.py           # Wrapper around cgminer API
+ │   └─ validator.py       # Challenge & scoring logic
+ ├─ utils/
+ │   └─ cgminer_api.py     # Minimal JSON-RPC helper
+ ├─ build_cgminer.sh       # Linux build script for cgminer_zeus
+ ├─ Dockerfile             # Self-contained miner image
+ ├─ requirements.txt
+ └─ setup.py
+```
+
+## Status
+
+* ✔ Protocol, miner, validator drafted
+* ✔ Dockerised build including cgminer
+* ☐ Fine-tuned scoring & weight smoothing
+* ☐ CI pipeline & unit tests
+
+PRs welcome!
